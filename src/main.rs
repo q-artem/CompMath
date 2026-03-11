@@ -67,7 +67,7 @@ fn solve_and_print(mut a: Vec<Vec<f64>>, mut b: Vec<f64>, epsilon: f64) {
     let b_original = b.clone();
 
     if !math::make_diagonally_dominant(&mut a, &mut b) {
-        println!("ВНИМАНИЕ: Диагональное преобладание не достигнуто. Метод может не сойтись.");
+        println!("Диагональное преобладание не достигнуто. Метод может не сойтись.");
     } else {
         println!(
             "Матрица успешно преобразована для диагонального преобладания. Преобразованная матрица:"

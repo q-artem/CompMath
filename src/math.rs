@@ -5,7 +5,7 @@ pub fn gauss_seidel(
     max_iter: usize,
 ) -> (Vec<f64>, usize, Vec<f64>) {
     let n = a.len();
-    let mut x = vec![0.0; n]; // Начальное приближение (нули)
+    let mut x = vec![0.0; n]; // Начальное приближение
     let mut x_prev = vec![0.0; n];
     let mut errors = vec![0.0; n];
     let mut iter = 0;
@@ -17,7 +17,7 @@ pub fn gauss_seidel(
         for i in 0..n {
             let mut sum1 = 0.0;
             for j in 0..i {
-                sum1 += a[i][j] * x[j]; // Используем уже обновленные значения
+                sum1 += a[i][j] * x[j];
             }
 
             let mut sum2 = 0.0;
@@ -64,7 +64,7 @@ pub fn make_diagonally_dominant(a: &mut Vec<Vec<f64>>, b: &mut Vec<f64>) -> bool
                 }
             }
 
-            // Проверяем, подходит ли строка r на позицию i
+            // подходит ли строка r на позицию i
             if a[r][i].abs() >= sum {
                 new_a[i] = a[r].clone();
                 new_b[i] = b[r];
@@ -75,7 +75,7 @@ pub fn make_diagonally_dominant(a: &mut Vec<Vec<f64>>, b: &mut Vec<f64>) -> bool
         }
 
         if !found {
-            return false; // Не нашли подходящую строку для i-й позиции
+            return false; // не нашли
         }
     }
 

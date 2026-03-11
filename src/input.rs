@@ -4,7 +4,6 @@ use rand::Rng;
 use std::fs;
 use std::io::{self, Write};
 
-// Упрощенная версия чтения из файла
 pub fn read_matrix_from_file() -> Result<(Vec<Vec<f64>>, Vec<f64>, f64), String> {
     print!("Введите имя файла: ");
     io::stdout().flush().unwrap();
@@ -28,18 +27,15 @@ pub fn read_matrix_from_file() -> Result<(Vec<Vec<f64>>, Vec<f64>, f64), String>
     if all_numbers.len() != (all_numbers[0] * all_numbers[0] + all_numbers[0] + 2.0) as usize {
         return Err("Ошибка формата файла".to_string());
     }
-
-    // достаем числа из списка по порядку
+    
     let mut current_pos = 0;
-
-    // размерность N
+    
     let n = all_numbers[current_pos] as usize;
     current_pos += 1;
 
     let mut a = vec![vec![0.0; n]; n];
     let mut b = vec![0.0; n];
-
-    // сама матрица (N строк)
+    
     for i in 0..n {
         for j in 0..n {
             a[i][j] = all_numbers[current_pos];
@@ -49,15 +45,13 @@ pub fn read_matrix_from_file() -> Result<(Vec<Vec<f64>>, Vec<f64>, f64), String>
         b[i] = all_numbers[current_pos];
         current_pos += 1;
     }
-
-    // точность Epsilon
+    
     let epsilon = all_numbers[current_pos];
 
     Ok((a, b, epsilon))
 }
 
 pub fn read_matrix_from_keyboard() -> Result<(Vec<Vec<f64>>, Vec<f64>, f64), String> {
-    // Читаем размерность n
     print!("Введите размерность матрицы n (до 20): ");
     io::stdout().flush().unwrap();
     let mut n_str = String::new();
@@ -111,8 +105,7 @@ pub fn read_matrix_from_keyboard() -> Result<(Vec<Vec<f64>>, Vec<f64>, f64), Str
             }
         }
     }
-
-    // точность
+    
     print!("Введите точность (epsilon, например 0.001): ");
     io::stdout().flush().unwrap();
     let mut eps_str = String::new();
@@ -149,8 +142,7 @@ pub fn gen_random_matrix() -> Result<(Vec<Vec<f64>>, Vec<f64>, f64), String> {
 
     for i in 0..n {
         let mut row_sum = 0.0;
-
-        // всё кроме диагонального
+        
         for j in 0..n {
             if i != j {
                 let val = rng.gen_range(-10.0..10.0);
@@ -159,7 +151,7 @@ pub fn gen_random_matrix() -> Result<(Vec<Vec<f64>>, Vec<f64>, f64), String> {
             }
         }
 
-        //ненерируем диагональный
+        // генерируем диагональный
         let diagonal_val = row_sum + rng.gen_range(1.0..10.0);
 
         // по приколу знак поменяем
