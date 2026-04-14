@@ -1,6 +1,19 @@
-use std::io::{self};
+use std::io::{self, Write};
 
 const CONSOLE_WIDTH: usize = 80;
+
+pub fn read_f64(prompt: &str) -> f64 {
+    loop {
+        print!("{}", prompt);
+        io::stdout().flush().unwrap();
+        let mut input = String::new();
+        io::stdin().read_line(&mut input).unwrap();
+        if let Ok(val) = input.trim().replace(',', ".").parse::<f64>() {
+            return val;
+        }
+        println!("Ошибка: введите число (например, 0.5 или -1.2)");
+    }
+}
 
 pub fn print_header(title: &str, level: u8) {
     let title_len = title.chars().count();

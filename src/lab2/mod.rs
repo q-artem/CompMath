@@ -3,30 +3,26 @@ pub mod input;
 
 use crate::{
     data_io::{print_header, print_sep_line, read_choice},
-    lab2::utils::plot_equation,
 };
 
-pub mod utils;
+use crate::lab2::solvers::analyse_and_solve_linear;
+
 pub mod equations;
+pub mod solvers;
+pub mod utils;
 
 pub(crate) fn solve() {
     loop {
         print_menu();
         match read_choice() {
             Some(1) => {
-                non_linear_equation();
+                let f = input::select_non_linear();
+                analyse_and_solve_linear(&f);
             }
             Some(2) => {}
             Some(0) => break,
             _ => println!("Ошибка. Попробуйте еще раз"),
         }
-    }
-}
-
-fn non_linear_equation() {
-    match plot_equation(input::select_non_linear(), -5.0, 5.0, "graph.png") {
-        Ok(_) => println!("График успешно сохранен в файл graph.png"),
-        Err(e) => println!("Ошибка при рисовании графика: {}", e),
     }
 }
 
