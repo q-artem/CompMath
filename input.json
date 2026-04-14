@@ -3,5 +3,11 @@
   "b": 3.0,
   "epsilon": 0.001,
   "method": 0,
-  "equation_idx": 3
+  "equation_idx": 1,
+  
+  "x0": 1.0,
+  "y0": 1.0,
+  "system_idx": 0,
+  
+  "mode": 1
 }

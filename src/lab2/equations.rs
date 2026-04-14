@@ -28,7 +28,7 @@ pub fn get_systems_functions() -> HashMap<&'static str, SystemFnPair> {
     );
 
     sys_map.insert(
-        "/ sin(x) - y - 1,32 = 0\n\\ cos(y - x - 0,85 = 0",
+        "/ sin(x) - y - 1,32 = 0\n\\ cos(y) - x - 0,85 = 0",
         (|x, y| x.sin() - y - 1.32, |x, y| y.cos() - x - 0.85),
     );
 

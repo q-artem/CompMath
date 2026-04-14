@@ -1,7 +1,8 @@
+use crate::lab2::utils::{diff_x, diff_y};
 use crate::{
     data_io::{print_header, print_sep_line, read_choice},
-    lab2::{equations::EquationFn, input::EquationTask},
     lab2::utils::plot_equation,
+    lab2::{equations::EquationFn, input::EquationTask},
 };
 
 use std::io::{self, Write};
@@ -49,7 +50,7 @@ pub fn analyse_and_solve_linear(task: &EquationTask) {
         println!("ОШИБКА: Левая граница (a) должна быть меньше правой (b)!");
         return;
     }
-    
+
     match plot_equation(task.f, task.a, task.b, "graph.png") {
         Ok(_) => println!("График успешно сохранен в файл graph.png"),
         Err(e) => println!("Ошибка при рисовании графика: {}", e),
@@ -210,6 +211,80 @@ pub fn simple_iteration(f: EquationFn, a: f64, b: f64, eps: f64) -> Result<Metho
         if iterations > 1000 {
             return Err(
                 "Метод простых итераций не сходится (проверьте условие сходимости)".to_string(),
+            );
+        }
+    }
+}
+
+// Структура для результатов решения системы
+pub struct SystemMethodResult {
+    pub x: f64,
+    pub y: f64,
+    pub iterations: usize,
+    pub error_x: f64,
+    pub error_y: f64,
+    pub f_val: f64,
+    pub g_val: f64,
+}
+
+pub fn newton_system(
+    f: fn(f64, f64) -> f64,
+    g: fn(f64, f64) -> f64,
+    x0: f64,
+    y0: f64,
+    eps: f64,
+) -> Result<SystemMethodResult, String> {
+    let mut x_k = x0;
+    let mut y_k = y0;
+    let mut iter = 0;
+    let h = 1e-5; // Шаг для численного дифференцирования
+
+    loop {
+        iter += 1;
+
+        let f_val = f(x_k, y_k);
+        let g_val = g(x_k, y_k);
+
+        // Матрица Якоби (численно)
+        let df_dx = diff_x(f, x_k, y_k, h);
+        let df_dy = diff_y(f, x_k, y_k, h);
+        let dg_dx = diff_x(g, x_k, y_k, h);
+        let dg_dy = diff_y(g, x_k, y_k, h);
+
+        // Определитель
+        let det = df_dx * dg_dy - df_dy * dg_dx;
+
+        if det.abs() < 1e-12 {
+            return Err("Якобиан вырожден (близок к нулю). Метод расходится!".to_string());
+        }
+
+        // Обратная матрица * вектор значений
+        let dx = -(f_val * dg_dy - g_val * df_dy) / det;
+        let dy = -(g_val * df_dx - f_val * dg_dx) / det;
+
+        x_k += dx;
+        y_k += dy;
+
+        // Вектор погрешностей
+        let error_x = dx.abs();
+        let error_y = dy.abs();
+
+        // Проверка на точность
+        if error_x.max(error_y) < eps || f(x_k, y_k).abs().max(g(x_k, y_k).abs()) < eps {
+            return Ok(SystemMethodResult {
+                x: x_k,
+                y: y_k,
+                iterations: iter,
+                error_x,
+                error_y,
+                f_val: f(x_k, y_k),
+                g_val: g(x_k, y_k),
+            });
+        }
+
+        if iter > 1000 {
+            return Err(
+                "Превышено максимальное количество итераций (метод не сошелся).".to_string(),
             );
         }
     }
