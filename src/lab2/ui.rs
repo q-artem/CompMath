@@ -3,8 +3,13 @@ use egui_plot::{HLine, Line, Plot, PlotPoints, Points, VLine};
 use serde::{Deserialize, Serialize};
 use std::fs;
 
-use crate::lab2::equations::{EquationFn, SystemFnPair, get_non_linear_functions, get_systems_functions};
-use crate::lab2::solvers::{RootCount, SystemMethodResult, analyze_roots, dichotomy, secant, simple_iteration, newton_system};
+use crate::lab2::equations::{
+    EquationFn, SystemFnPair, get_non_linear_functions, get_systems_functions,
+};
+use crate::lab2::solvers::{
+    RootCount, SystemMethodResult, analyze_roots, dichotomy, newton_system, secant,
+    simple_iteration,
+};
 
 #[derive(PartialEq)]
 enum AppMode {
@@ -20,7 +25,6 @@ struct InputData {
     epsilon: f64,
     method: usize,
     equation_idx: usize,
-    
     x0: f64,
     y0: f64,
     system_idx: usize,
@@ -60,18 +64,15 @@ struct Lab2App {
     eps_str: String,
     method: usize,
 
-    // Системы
     systems: Vec<(String, SystemFnPair)>,
     selected_sys_idx: usize,
     x0_str: String,
     y0_str: String,
     sys_result: Option<SystemMethodResult>,
 
-    // Результаты вычислений и статус
     result_text: String,
     io_message: String,
 
-    // Данные для отрисовки и сохранения
     last_root: Option<f64>,
     last_f_value: Option<f64>,
     last_iterations: Option<usize>,
@@ -80,6 +81,7 @@ struct Lab2App {
     prev_a: f64,
     prev_b: f64,
     prev_eq_idx: usize,
+    prev_sys_idx: usize,
 }
 
 impl Lab2App {
@@ -98,7 +100,7 @@ impl Lab2App {
         systems.sort_by(|a, b| a.0.cmp(&b.0));
 
         Self {
-            mode: AppMode::Equation, // По умолчанию одиночные уравнения
+            mode: AppMode::Equation,
             equations,
             selected_eq_idx: 0,
             a_str: "-5.0".to_string(),
@@ -120,6 +122,7 @@ impl Lab2App {
             prev_a: -5.0,
             prev_b: 5.0,
             prev_eq_idx: 0,
+            prev_sys_idx: 0,
         }
     }
 
@@ -133,7 +136,7 @@ impl Lab2App {
                     self.method = data.method;
                     self.x0_str = data.x0.to_string();
                     self.y0_str = data.y0.to_string();
-                    
+
                     if data.mode == 1 {
                         self.mode = AppMode::System;
                     } else {
@@ -147,7 +150,7 @@ impl Lab2App {
                         self.selected_sys_idx = data.system_idx;
                     }
                     self.io_message = "Данные успешно загружены из input.json".into();
-                    
+
                     if self.mode == AppMode::Equation {
                         self.calculate_equation();
                     } else {
@@ -207,7 +210,15 @@ impl Lab2App {
                     Погрешности: dx = {:.2e}, dy = {:.2e}\n\
                     Затрачено итераций: {}\n\
                     =========================================\n",
-                    sys_name, self.x0_str, self.y0_str, self.eps_str, res.x, res.y, res.error_x, res.error_y, res.iterations
+                    sys_name,
+                    self.x0_str,
+                    self.y0_str,
+                    self.eps_str,
+                    res.x,
+                    res.y,
+                    res.error_x,
+                    res.error_y,
+                    res.iterations
                 )
             } else {
                 self.io_message = "Ошибка: Сначала решите систему, чтобы сохранить отчет!".into();
@@ -267,7 +278,7 @@ impl Lab2App {
                 );
                 return;
             }
-            RootCount::One => {} // Все ок
+            RootCount::One => {}
         }
 
         let result = match self.method {
@@ -299,13 +310,25 @@ impl Lab2App {
     fn calculate_system(&mut self) {
         self.sys_result = None;
         let x0: f64 = match self.x0_str.replace(',', ".").parse() {
-            Ok(v) => v, Err(_) => { self.result_text = "Ошибка: x0 должно быть числом".into(); return; }
+            Ok(v) => v,
+            Err(_) => {
+                self.result_text = "Ошибка: x0 должно быть числом".into();
+                return;
+            }
         };
         let y0: f64 = match self.y0_str.replace(',', ".").parse() {
-            Ok(v) => v, Err(_) => { self.result_text = "Ошибка: y0 должно быть числом".into(); return; }
+            Ok(v) => v,
+            Err(_) => {
+                self.result_text = "Ошибка: y0 должно быть числом".into();
+                return;
+            }
         };
         let eps: f64 = match self.eps_str.replace(',', ".").parse() {
-            Ok(v) => v, Err(_) => { self.result_text = "Ошибка: Точность должна быть числом".into(); return; }
+            Ok(v) => v,
+            Err(_) => {
+                self.result_text = "Ошибка: Точность должна быть числом".into();
+                return;
+            }
         };
 
         let (f, g) = self.systems[self.selected_sys_idx].1;
@@ -348,10 +371,9 @@ impl Lab2App {
         }
     }
 
-    // ДОБАВЛЕНО: функция получения точек для графиков систем
     fn get_implicit_points(f: fn(f64, f64) -> f64, bounds: [f64; 4]) -> Vec<[f64; 2]> {
         let (xmin, xmax, ymin, ymax) = (bounds[0], bounds[1], bounds[2], bounds[3]);
-        let steps = 400;
+        let steps = 300;
         let dx = (xmax - xmin) / steps as f64;
         let dy = (ymax - ymin) / steps as f64;
         let mut points = Vec::new();
@@ -424,7 +446,6 @@ impl eframe::App for Lab2App {
                     ui.radio_value(&mut self.method, 0, "Дихотомия (Половинное деление)");
                     ui.radio_value(&mut self.method, 1, "Метод секущих");
                     ui.radio_value(&mut self.method, 2, "Метод простой итерации");
-
                 } else {
                     ui.heading("Параметры системы");
                     ui.add_space(10.0);
@@ -435,7 +456,11 @@ impl eframe::App for Lab2App {
                         .width(380.0)
                         .show_ui(ui, |ui| {
                             for (i, (name, _)) in self.systems.iter().enumerate() {
-                                ui.selectable_value(&mut self.selected_sys_idx, i, name.replace('\n', " "));
+                                ui.selectable_value(
+                                    &mut self.selected_sys_idx,
+                                    i,
+                                    name.replace('\n', " "),
+                                );
                             }
                         });
 
@@ -451,7 +476,7 @@ impl eframe::App for Lab2App {
                         ui.label("Точность:");
                         ui.add(egui::TextEdit::singleline(&mut self.eps_str).desired_width(100.0));
                     });
-                    
+
                     ui.add_space(20.0);
                     ui.separator();
                     ui.add_space(10.0);
@@ -501,8 +526,9 @@ impl eframe::App for Lab2App {
                 let b = self.b_str.replace(',', ".").parse::<f64>().unwrap_or(5.0);
                 let f = self.equations[self.selected_eq_idx].1;
 
-                let params_changed =
-                    a != self.prev_a || b != self.prev_b || self.selected_eq_idx != self.prev_eq_idx;
+                let params_changed = a != self.prev_a
+                    || b != self.prev_b
+                    || self.selected_eq_idx != self.prev_eq_idx;
 
                 let plot = Plot::new("lab_plot")
                     .view_aspect(2.0)
@@ -538,8 +564,18 @@ impl eframe::App for Lab2App {
                             .color(egui::Color32::LIGHT_BLUE),
                     );
 
-                    plot_ui.hline(HLine::new(0.0).color(egui::Color32::YELLOW).width(2.0).name("Ось X"));
-                    plot_ui.vline(VLine::new(0.0).color(egui::Color32::YELLOW).width(2.0).name("Ось Y"));
+                    plot_ui.hline(
+                        HLine::new(0.0)
+                            .color(egui::Color32::YELLOW)
+                            .width(2.0)
+                            .name("Ось X"),
+                    );
+                    plot_ui.vline(
+                        VLine::new(0.0)
+                            .color(egui::Color32::YELLOW)
+                            .width(2.0)
+                            .name("Ось Y"),
+                    );
 
                     plot_ui.vline(
                         VLine::new(a)
@@ -563,7 +599,6 @@ impl eframe::App for Lab2App {
                     }
                 });
 
-                // Обновляем память
                 if params_changed {
                     self.prev_a = a;
                     self.prev_b = b;
@@ -572,6 +607,8 @@ impl eframe::App for Lab2App {
                     self.last_root = None;
                 }
             } else {
+                let sys_changed = self.selected_sys_idx != self.prev_sys_idx;
+
                 let plot = Plot::new("lab_plot_sys")
                     .view_aspect(1.0)
                     .legend(egui_plot::Legend::default());
@@ -581,7 +618,7 @@ impl eframe::App for Lab2App {
                     plot_ui.vline(VLine::new(0.0).color(egui::Color32::YELLOW).width(2.0));
 
                     let (f, g) = self.systems[self.selected_sys_idx].1;
-                    
+
                     let bounds = if let Some(ref res) = self.sys_result {
                         [res.x - 5.0, res.x + 5.0, res.y - 5.0, res.y + 5.0]
                     } else {
@@ -589,20 +626,36 @@ impl eframe::App for Lab2App {
                     };
 
                     let pts_f = Self::get_implicit_points(f, bounds);
-                    plot_ui.points(Points::new(pts_f).color(egui::Color32::RED).radius(2.0).name("F(x,y) = 0"));
+                    plot_ui.points(
+                        Points::new(pts_f)
+                            .color(egui::Color32::RED)
+                            .radius(2.0)
+                            .name("F(x,y) = 0"),
+                    );
 
                     let pts_g = Self::get_implicit_points(g, bounds);
-                    plot_ui.points(Points::new(pts_g).color(egui::Color32::LIGHT_BLUE).radius(2.0).name("G(x,y) = 0"));
+                    plot_ui.points(
+                        Points::new(pts_g)
+                            .color(egui::Color32::LIGHT_BLUE)
+                            .radius(2.0)
+                            .name("G(x,y) = 0"),
+                    );
 
                     if let Some(ref res) = self.sys_result {
                         plot_ui.points(
                             Points::new(vec![[res.x, res.y]])
-                            .color(egui::Color32::GREEN)
-                            .radius(8.0)
-                            .name(format!("Решение: x={:.2}, y={:.2}", res.x, res.y))
+                                .color(egui::Color32::GREEN)
+                                .radius(8.0)
+                                .name(format!("Решение: x={:.2}, y={:.2}", res.x, res.y)),
                         );
                     }
                 });
+
+                if sys_changed {
+                    self.prev_sys_idx = self.selected_sys_idx;
+                    self.sys_result = None;
+                    self.result_text = "Ожидание ввода данных...".into();
+                }
             }
         });
     }
