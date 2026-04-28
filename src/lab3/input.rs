@@ -1,14 +1,42 @@
 use crate::data_io::{print_header, read_choice, read_f64};
-use crate::lab3::functions::{IntegralFunction, get_functions};
+use crate::lab3::functions::{IntegralFunction, get_functions, get_improper_functions};
 use crate::lab3::methods::IntegrationMethodType;
 
-pub fn choose_function() -> Option<IntegralFunction> {
-    let functions = get_functions();
-    print_header("Выберите функцию для интегрирования", 3);
+pub fn choose_lab_mode() -> Option<u32> {
+    print_header("Выберите режим работы", 2);
+    println!("1. Вычисление собственных интегралов");
+    println!("2. Работа с несобственными интегралами (Доп)");
+    println!("0. Выход");
+
+    loop {
+        print!("Выберите пункт: ");
+        std::io::Write::flush(&mut std::io::stdout()).unwrap();
+        if let Some(choice) = read_choice() {
+            if choice <= 2 {
+                return Some(choice);
+            }
+        }
+        println!("Ошибка: выберите 0, 1 или 2.");
+    }
+}
+
+pub fn choose_function(is_improper: bool) -> Option<IntegralFunction> {
+    let functions = if is_improper {
+        get_improper_functions()
+    } else {
+        get_functions()
+    };
+    let title = if is_improper {
+        "Выберите функцию с особенностями"
+    } else {
+        "Выберите функцию для интегрирования"
+    };
+
+    print_header(title, 3);
     for (i, f) in functions.iter().enumerate() {
         println!("{}. f(x) = {}", i + 1, f.description);
     }
-    println!("0. Выход");
+    println!("0. Назад");
 
     loop {
         print!("Выберите номер (0-{}): ", functions.len());
@@ -18,7 +46,11 @@ pub fn choose_function() -> Option<IntegralFunction> {
                 return None;
             }
             if choice >= 1 && choice <= functions.len() as u32 {
-                return Some(get_functions().remove((choice - 1) as usize));
+                return Some(if is_improper {
+                    get_improper_functions().remove((choice - 1) as usize)
+                } else {
+                    get_functions().remove((choice - 1) as usize)
+                });
             }
         }
         println!("Ошибка: введите корректный номер.");
