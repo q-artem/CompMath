@@ -176,7 +176,7 @@ pub fn integrate_with_precision(
     };
 
     loop {
-        if n > 1_048_576 {
+        if n > 1_048_57600 {
             return Err(
                 "Превышено максимальное число разбиений. Интеграл может расходиться.".to_string(),
             );
