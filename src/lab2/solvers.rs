@@ -5,7 +5,7 @@ use crate::{
     lab2::{equations::EquationFn, input::EquationTask},
 };
 
-use std::io::{self, Write};
+use std::io::{Write};
 
 pub enum RootCount {
     Zero,

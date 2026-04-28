@@ -9,7 +9,7 @@
   lang: "ru"
 )
 
-#set text(font: "Times New Roman")
+// #set text(font: "Times New Roman")
 
 #show heading.where(level: 4): set text(weight: "regular", size: 1em)    
 #show heading.where(level: 4): set block(sticky: false)
@@ -106,19 +106,19 @@
 По варианту дано уравнение $ f(x) = 2x^3+3.41x^2-23.74x+2.95 $
 Представление графика с отмеченными искомыми корнями:
 
-#figure(
- image("graph.png"),
- caption: [График данной функции]
-)
+// #figure(
+//  image("graph.png"),
+//  caption: [График данной функции]
+// )
 
 #pagebreak()
 
 Отделение корней уравнения:
 
-#figure(
-  image("isolate.png"),
-  caption: [Отделение корней уравнения]
-)
+// #figure(
+//   image("isolate.png"),
+//   caption: [Отделение корней уравнения]
+// )
 
 == Аналитическая проверка интервалов изоляции корней
 
@@ -283,10 +283,10 @@ $ cases(
 
 Представление графика с отмеченными искомыми корнями:
 
-#figure(
- image("graph2.png"),
- caption: [График данной системы уравнений]
-)
+// #figure(
+//  image("graph2.png"),
+//  caption: [График данной системы уравнений]
+// )
 
 == Решение
 Для решения используем метод простой итерации
@@ -344,25 +344,25 @@ $(partial phi_2) / (partial y) = 0$
 
 = Блок-схемы
 
-#grid(
-  columns: (1.1fr, 1.1fr), gutter: 1em,
-  [#figure(
-    image("img /311._image007.png"),
-    caption: [М. Дихотомии]
-  )],
-  [#figure(
-    image("img /htmlconvd-6S1Zce_html_e3454018cd4d7b50.png"),
-    caption: [М. Секущих]
-  )],
-  [#figure(
-    image("img /image (3).png"),
-    caption: [М. Простой итерации]
-  )],
-  [#figure( 
-    image("img /image (2).png"),
-    caption: [М. Ньютона]
-  )]
-)
+// #grid(
+//   columns: (1.1fr, 1.1fr), gutter: 1em,
+//   [#figure(
+//     image("img /311._image007.png"),
+//     caption: [М. Дихотомии]
+//   )],
+//   [#figure(
+//     image("img /htmlconvd-6S1Zce_html_e3454018cd4d7b50.png"),
+//     caption: [М. Секущих]
+//   )],
+//   [#figure(
+//     image("img /image (3).png"),
+//     caption: [М. Простой итерации]
+//   )],
+//   [#figure( 
+//     image("img /image (2).png"),
+//     caption: [М. Ньютона]
+//   )]
+// )
 
 = Программная реализация
 
@@ -374,7 +374,7 @@ $(partial phi_2) / (partial y) = 0$
 = Примеры и результаты работы
 Результат работы программы, экспорт в текстовый файл:
 
-#raw(read("output.txt"), block: true) 
+// #raw(read("output.txt"), block: true) 
 
 = Анализ методов
 
@@ -406,7 +406,7 @@ $(partial phi_2) / (partial y) = 0$
 = Примеры и результаты работы
 Результат работы программы, экспорт в текстовый файл:
 
-#raw(read("output.txt"), block: true) 
+// #raw(read("output.txt"), block: true) 
 
 = Выводы
 В ходе выполнения лабораторной работы были успешно изучены и программно реализованы на языке Rust численные методы решения нелинейных уравнений (метод хорд, метод Ньютона, метод простой итерации) и систем нелинейных уравнений. Экспериментально подтверждены теоретические оценки скорости сходимости методов.
