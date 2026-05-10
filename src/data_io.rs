@@ -75,6 +75,14 @@ pub fn print(text: &str, align: Align) {
     }
 }
 
+pub fn read_float_choice() -> Option<f32> {
+    let mut input = String::new();
+    if io::stdin().read_line(&mut input).is_err() {
+        return None;
+    }
+    input.trim().parse::<f32>().ok()
+}
+
 pub fn read_choice() -> Option<u32> {
     let mut input = String::new();
     if io::stdin().read_line(&mut input).is_err() {
