@@ -36,6 +36,9 @@ struct Lab4App {
     x_input: String,
     y_input: String,
     io_message: String,
+
+    // UI state for scaling
+    reset_plot: bool,
 }
 
 impl Lab4App {
@@ -48,6 +51,7 @@ impl Lab4App {
             x_input: String::new(),
             y_input: String::new(),
             io_message: "Готово к работе".into(),
+            reset_plot: true,
         }
     }
 
@@ -83,6 +87,7 @@ impl Lab4App {
         }
         self.calculate();
         self.io_message = "Вариант №6 успешно загружен.".into();
+        self.reset_plot = true;
     }
 
     fn load_from_file(&mut self) {
@@ -106,12 +111,59 @@ impl Lab4App {
                 self.points = new_points;
                 self.calculate();
                 self.io_message = format!("Загружено {} точек из файла.", self.points.len());
+                self.reset_plot = true;
             } else {
                 self.io_message =
                     format!("Ошибка: В файле должно быть минимум {} точек!", MIN_POINTS);
             }
         } else {
             self.io_message = "Ошибка: Не удалось открыть lab4_input.txt".into();
+        }
+    }
+
+    fn save_to_file(&mut self) {
+        if self.results.is_empty() {
+            self.io_message = "Ошибка: Нет данных для сохранения!".into();
+            return;
+        }
+
+        let mut report = String::new();
+        report.push_str("ОТЧЕТ ОБ АППРОКСИМАЦИИ ФУНКЦИЙ (МНК)\n");
+        report.push_str("=========================================\n\n");
+
+        report.push_str("ИСХОДНЫЕ ТОЧКИ:\n");
+        report.push_str("  x\t\t  y\n");
+        for p in &self.points {
+            report.push_str(&format!("{:.4}\t\t{:.4}\n", p.x, p.y));
+        }
+        report.push_str("\n-----------------------------------------\n");
+
+        if let Some(best) = self.best_idx {
+            let res = &self.results[best];
+            report.push_str(&format!("НАИЛУЧШАЯ МОДЕЛЬ: {}\n", res.model_type));
+            report.push_str(&format!("Уравнение: {}\n", res.formula()));
+            report.push_str(&format!("СКО (RMSD): {:.6}\n", res.epsilon));
+            report.push_str(&format!("Коэф. детерминации R²: {:.6}\n\n", res.r_squared));
+        }
+
+        report.push_str("СРАВНИТЕЛЬНАЯ ТАБЛИЦА ВСЕХ МОДЕЛЕЙ:\n");
+        report.push_str(&format!(
+            "{:<45} {:<10} {:<10} {:<10}\n",
+            "Тип функции", "S", "RMSD", "R^2"
+        ));
+        for res in &self.results {
+            report.push_str(&format!(
+                "{:<45} {:<10.4} {:<10.4} {:<10.4}\n",
+                res.model_type.to_string(),
+                res.s,
+                res.epsilon,
+                res.r_squared
+            ));
+        }
+
+        match fs::write("lab4_output.txt", report) {
+            Ok(_) => self.io_message = "Результаты сохранены в lab4_output.txt".into(),
+            Err(e) => self.io_message = format!("Ошибка сохранения: {}", e),
         }
     }
 }
@@ -137,11 +189,18 @@ impl eframe::App for Lab4App {
                     if ui.button("Загрузить из lab4_input.txt").clicked() {
                         self.load_from_file();
                     }
+                    if ui.button("Сохранить результаты в файл").clicked() {
+                        self.save_to_file();
+                    }
                     if ui.button("Очистить все точки").clicked() {
                         self.points.clear();
                         self.results.clear();
                         self.best_idx = None;
                         self.io_message = "Данные очищены.".into();
+                        self.reset_plot = true;
+                    }
+                    if ui.button("Сбросить масштаб графика").clicked() {
+                        self.reset_plot = true;
                     }
                 });
 
@@ -158,7 +217,7 @@ impl eframe::App for Lab4App {
 
                     let can_add = self.points.len() < MAX_POINTS;
                     if ui
-                        .add_enabled(can_add, egui::Button::new("➕ Добавить точку"))
+                        .add_enabled(can_add, egui::Button::new("Добавить точку"))
                         .clicked()
                     {
                         if let (Ok(x), Ok(y)) = (
@@ -172,6 +231,7 @@ impl eframe::App for Lab4App {
                             if self.points.len() >= MIN_POINTS {
                                 self.calculate();
                             }
+                            self.reset_plot = true;
                         } else {
                             self.io_message = "Ошибка: Некорректные координаты!".into();
                         }
@@ -217,9 +277,51 @@ impl eframe::App for Lab4App {
         egui::CentralPanel::default().show(ctx, |ui| {
             let plot = Plot::new("lsm_plot")
                 .view_aspect(2.0)
-                .legend(Legend::default());
+                .legend(Legend::default())
+                .allow_zoom(true)
+                .allow_drag(true)
+                .allow_scroll(true);
 
             plot.show(ui, |plot_ui| {
+                if self.reset_plot {
+                    if !self.points.is_empty() {
+                        let min_x = self
+                            .points
+                            .iter()
+                            .map(|p| p.x)
+                            .fold(f64::INFINITY, f64::min);
+                        let max_x = self
+                            .points
+                            .iter()
+                            .map(|p| p.x)
+                            .fold(f64::NEG_INFINITY, f64::max);
+                        let min_y = self
+                            .points
+                            .iter()
+                            .map(|p| p.y)
+                            .fold(f64::INFINITY, f64::min);
+                        let max_y = self
+                            .points
+                            .iter()
+                            .map(|p| p.y)
+                            .fold(f64::NEG_INFINITY, f64::max);
+
+                        let pad_x = (max_x - min_x).abs().max(1.0) * 0.2;
+                        let pad_y = (max_y - min_y).abs().max(1.0) * 0.2;
+
+                        plot_ui.set_plot_bounds(egui_plot::PlotBounds::from_min_max(
+                            [min_x - pad_x, min_y - pad_y],
+                            [max_x + pad_x, max_y + pad_y],
+                        ));
+                    } else {
+                        plot_ui.set_plot_bounds(egui_plot::PlotBounds::from_min_max(
+                            [-1.0, -1.0],
+                            [3.0, 3.0],
+                        ));
+                    }
+                    self.reset_plot = false;
+                }
+
                 plot_ui.hline(HLine::new(0.0).color(egui::Color32::GRAY).width(1.0));
                 plot_ui.vline(VLine::new(0.0).color(egui::Color32::GRAY).width(1.0));
 
@@ -242,22 +344,9 @@ impl eframe::App for Lab4App {
                 ];
 
                 if !self.results.is_empty() {
-                    let (min_x, max_x) = if self.points.is_empty() {
-                        (0.0, 2.0)
-                    } else {
-                        let min = self
-                            .points
-                            .iter()
-                            .map(|p| p.x)
-                            .fold(f64::INFINITY, f64::min);
-                        let max = self
-                            .points
-                            .iter()
-                            .map(|p| p.x)
-                            .fold(f64::NEG_INFINITY, f64::max);
-                        let pad = (max - min).abs().max(0.1) * 0.2;
-                        (min - pad, max + pad)
-                    };
+                    let bounds = plot_ui.plot_bounds();
+                    let min_x = bounds.min()[0];
+                    let max_x = bounds.max()[0];
 
                     for (i, res) in self.results.iter().enumerate() {
                         let is_best = self.best_idx == Some(i);
