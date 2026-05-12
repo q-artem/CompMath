@@ -175,7 +175,7 @@ impl eframe::App for Lab4App {
         }
         egui::SidePanel::left("left_panel")
             .resizable(false)
-            .default_width(400.0)
+            .default_width( 300.0)
             .show(ctx, |ui| {
                 ui.add_space(10.0);
                 ui.heading("Управление данными");
