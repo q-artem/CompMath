@@ -3,6 +3,8 @@
   margin: (top: 2cm, bottom: 2cm, left: 3cm, right: 1.5cm),
 )
 
+// todo скрины на светлый фон
+
 #set text(
   size: 14pt,
   lang: "ru",
@@ -114,7 +116,7 @@ $
 == Табулирование функции
 #align(center)[
   #table(
-    columns: (auto, auto, auto, auto, auto, auto, auto, auto, auto, auto, auto),
+    columns: (auto, auto, auto, auto, auto, auto, auto, auto, auto, auto, auto, auto),
     inset: 5pt,
     align: center + horizon,
     [$x$], [0.0], [0.2], [0.4], [0.6], [0.8], [1.0], [1.2], [1.4], [1.6], [1.8],
@@ -143,6 +145,22 @@ $
 $ a approx -0.835, b approx 2.044, c approx 0.141 $
 Уравнение: $y = -0.835 x^2 + 2.044 x + 0.141$. СКО $epsilon approx 0.086$.
 
+#figure(image("Снимок экрана_20260512_152652.png"), caption: "Результаты аппроксимации")
+
+= Блок-схема алгоритма
+Ниже представлены блок-схемы, иллюстрирующие логику работы программы и этапы математического метода наименьших квадратов:
+
+#grid(columns: (auto, auto))[
+#figure(
+  image("htmlconvd-C9gauM_html_2074988a0edae920.jpg", width: 70%),
+  caption: [Алгоритм формирования системы нормальных уравнений],
+)][
+
+#figure(
+  image("image097.gif", width: 60%),
+  caption: [Схема процесса подбора коэффициентов],
+)]
+
 #pagebreak()
 
 = Листинг программы
@@ -151,11 +169,22 @@ $ a approx -0.835, b approx 2.044, c approx 0.141 $
 
 #show raw: it => align(center, block(fill: rgb("#EEEEEE"), inset: 5pt, radius: 8pt, text(it, size: 9pt)))
 
-Реализация метода наименьших квадратов (линейная модель):
+Реализация методов аппроксимации (МНК):
 #raw(
-  "fn solve_linear(points: &[Point]) -> Option<ApproximationResult> {
+  "pub fn solve_lsm(points: &[Point]) -> Vec<ApproximationResult> {
+    let mut results = Vec::new();
+    if let Some(res) = solve_linear(points) { results.push(res); }
+    if let Some(res) = solve_polynomial(points, 2) { results.push(res); }
+    if let Some(res) = solve_polynomial(points, 3) { results.push(res); }
+    if let Some(res) = solve_exponential(points) { results.push(res); }
+    if let Some(res) = solve_logarithmic(points) { results.push(res); }
+    if let Some(res) = solve_power(points) { results.push(res); }
+    results
+}
+
+fn solve_linear(points: &[Point]) -> Option<ApproximationResult> {
     let n = points.len() as f64;
-    let mut sx = 0.0; let mut sy = 0.0; let mut sxx = 0.0; let mut sxy = 0.0;
+    let (mut sx, mut sy, mut sxx, mut sxy) = (0.0, 0.0, 0.0, 0.0);
     for p in points {
         sx += p.x; sy += p.y; sxx += p.x * p.x; sxy += p.x * p.y;
     }
@@ -163,8 +192,33 @@ $ a approx -0.835, b approx 2.044, c approx 0.141 $
     if det.abs() < 1e-9 { return None; }
     let a = (sxy * n - sx * sy) / det;
     let b = (sxx * sy - sx * sxy) / det;
-
     Some(build_result(ModelType::Linear, vec![a, b], points, None))
+}
+
+fn solve_polynomial(points: &[Point], degree: usize) -> Option<ApproximationResult> {
+    let n = degree + 1;
+    let mut matrix = vec![vec![0.0; n]; n];
+    let mut b = vec![0.0; n];
+    for i in 0..n {
+        for j in 0..n {
+            matrix[i][j] = points.iter().map(|p| p.x.powi((degree * 2 - (i + j)) as i32)).sum();
+        }
+        b[i] = points.iter().map(|p| p.y * p.x.powi((degree - i) as i32)).sum();
+    }
+    solve_gaussian(matrix, b).map(|coeffs| {
+        let mt = if degree == 2 { ModelType::Polynomial2 } else { ModelType::Polynomial3 };
+        build_result(mt, coeffs, points, None)
+    })
+}
+
+fn solve_exponential(points: &[Point]) -> Option<ApproximationResult> {
+    if points.iter().any(|p| p.y <= 0.0) { return None; }
+    let transformed: Vec<Point> = points.iter().map(|p| Point { x: p.x, y: p.y.ln() }).collect();
+    solve_linear(&transformed).map(|lin| {
+        let b = lin.coefficients[0];
+        let a = lin.coefficients[1].exp();
+        build_result(ModelType::Exponential, vec![a, b], points, None)
+    })
 }",
   lang: "rust",
   block: true,
@@ -174,17 +228,17 @@ $ a approx -0.835, b approx 2.044, c approx 0.141 $
 == Графики аппроксимирующих функций
 
 #figure(
-  image("lab4_plot.png", width: 100%),
+  image("Снимок экрана_20260512_165949.png", width: 100%),
   caption: [График аппроксимирующих функций для данных из задания],
 )
 
 #figure(
-  image("lab4_plot_2.png", width: 100%),
+  image("Снимок экрана_20260512_170006.png", width: 100%),
   caption: [Пример загрузки данных из файла],
 )
 
 #figure(
-  image("lab4_plot_3.png", width: 100%),
+  image("Снимок экрана_20260521_011445.png", width: 100%),
   caption: [Еще один пример точек],
 )
 

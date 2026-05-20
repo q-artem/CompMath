@@ -17,6 +17,7 @@ pub fn run_ui() {
         "Lab4 GUI",
         options,
         Box::new(|cc| {
+            cc.egui_ctx.set_visuals(egui::Visuals::light());
             let mut style = (*cc.egui_ctx.style()).clone();
             for text_style in style.text_styles.values_mut() {
                 text_style.size *= 1.3;
@@ -33,8 +34,7 @@ struct Lab4App {
     best_idx: Option<usize>,
 
     status_msg: String,
-    x_input: String,
-    y_input: String,
+    points_input: String,
     io_message: String,
 
     // UI state for scaling
@@ -48,10 +48,36 @@ impl Lab4App {
             results: Vec::new(),
             best_idx: None,
             status_msg: "Ожидание ввода данных...".into(),
-            x_input: String::new(),
-            y_input: String::new(),
+            points_input: String::new(),
             io_message: "Готово к работе".into(),
             reset_plot: true,
+        }
+    }
+
+    fn parse_input(&mut self) {
+        let mut new_points = Vec::new();
+        for line in self.points_input.lines() {
+            let parts: Vec<&str> = line.split_whitespace().collect();
+            if parts.len() >= 2 {
+                if let (Ok(x), Ok(y)) = (
+                    parts[0].replace(',', ".").parse::<f64>(),
+                    parts[1].replace(',', ".").parse::<f64>(),
+                ) {
+                    new_points.push(Point { x, y });
+                }
+            }
+            if new_points.len() >= MAX_POINTS {
+                break;
+            }
+        }
+        self.points = new_points;
+        self.results.clear();
+        self.best_idx = None;
+        self.reset_plot = true;
+        if self.points.len() >= MIN_POINTS {
+            self.calculate();
+        } else {
+            self.status_msg = format!("Добавьте минимум {} точек для анализа.", MIN_POINTS);
         }
     }
 
@@ -62,60 +88,32 @@ impl Lab4App {
         }
         self.results = solve_lsm(&self.points);
         if !self.results.is_empty() {
-            let mut best = 0;
-            let mut min_eps = self.results[0].epsilon;
-            for (i, res) in self.results.iter().enumerate() {
-                if res.epsilon < min_eps {
-                    min_eps = res.epsilon;
-                    best = i;
-                }
-            }
-            self.best_idx = Some(best);
+            // Sort by epsilon (RMSD) ascending - best first
+            self.results.sort_by(|a, b| a.epsilon.partial_cmp(&b.epsilon).unwrap_or(std::cmp::Ordering::Equal));
+            
+            self.best_idx = Some(0);
             self.status_msg = "Вычисления успешно завершены.".into();
         }
     }
 
     fn load_variant(&mut self) {
-        self.points.clear();
+        self.points_input.clear();
         let mut x = 0.0;
-        while x <= 2.01 && self.points.len() < MAX_POINTS {
-            self.points.push(Point {
-                x,
-                y: variant_function(x),
-            });
+        while x <= 2.01 {
+            self.points_input.push_str(&format!("{:.2} {:.4}\n", x, variant_function(x)));
             x += 0.2;
         }
-        self.calculate();
+        self.parse_input();
         self.io_message = "Вариант №6 успешно загружен.".into();
         self.reset_plot = true;
     }
 
     fn load_from_file(&mut self) {
         if let Ok(content) = fs::read_to_string("lab4_input.txt") {
-            let mut new_points = Vec::new();
-            for line in content.lines() {
-                let parts: Vec<&str> = line.split_whitespace().collect();
-                if parts.len() >= 2 {
-                    if let (Ok(x), Ok(y)) = (
-                        parts[0].replace(',', ".").parse::<f64>(),
-                        parts[1].replace(',', ".").parse::<f64>(),
-                    ) {
-                        new_points.push(Point { x, y });
-                    }
-                }
-                if new_points.len() >= MAX_POINTS {
-                    break;
-                }
-            }
-            if new_points.len() >= MIN_POINTS {
-                self.points = new_points;
-                self.calculate();
-                self.io_message = format!("Загружено {} точек из файла.", self.points.len());
-                self.reset_plot = true;
-            } else {
-                self.io_message =
-                    format!("Ошибка: В файле должно быть минимум {} точек!", MIN_POINTS);
-            }
+            self.points_input = content;
+            self.parse_input();
+            self.io_message = format!("Данные загружены из файла. Найдено {} точек.", self.points.len());
+            self.reset_plot = true;
         } else {
             self.io_message = "Ошибка: Не удалось открыть lab4_input.txt".into();
         }
@@ -194,6 +192,7 @@ impl eframe::App for Lab4App {
                     }
                     if ui.button("Очистить все точки").clicked() {
                         self.points.clear();
+                        self.points_input.clear();
                         self.results.clear();
                         self.best_idx = None;
                         self.io_message = "Данные очищены.".into();
@@ -205,43 +204,24 @@ impl eframe::App for Lab4App {
                 });
 
                 ui.add_space(20.0);
-                ui.heading("Добавить точку");
+                ui.heading("Ввод точек (x y)");
                 ui.group(|ui| {
                     ui.set_width(380.0);
-                    ui.horizontal(|ui| {
-                        ui.label("X:");
-                        ui.add(egui::TextEdit::singleline(&mut self.x_input).desired_width(60.0));
-                        ui.label("Y:");
-                        ui.add(egui::TextEdit::singleline(&mut self.y_input).desired_width(60.0));
-                    });
+                    egui::ScrollArea::vertical()
+                        .id_source("input_scroll")
+                        .max_height(200.0) // Фиксируем максимальную высоту области ввода
+                        .show(ui, |ui| {
+                            let edit = ui.add(
+                                egui::TextEdit::multiline(&mut self.points_input)
+                                    .desired_rows(10)
+                                    .desired_width(f32::INFINITY)
+                                    .hint_text("Введите координаты точек, по одной на строке:\n0.1 1.2\n0.2 2.1\n..."),
+                            );
 
-                    let can_add = self.points.len() < MAX_POINTS;
-                    if ui
-                        .add_enabled(can_add, egui::Button::new("Добавить точку"))
-                        .clicked()
-                    {
-                        if let (Ok(x), Ok(y)) = (
-                            self.x_input.replace(',', ".").parse::<f64>(),
-                            self.y_input.replace(',', ".").parse::<f64>(),
-                        ) {
-                            self.points.push(Point { x, y });
-                            self.io_message = format!("Добавлена точка ({:.2}, {:.2})", x, y);
-                            self.x_input.clear();
-                            self.y_input.clear();
-                            if self.points.len() >= MIN_POINTS {
-                                self.calculate();
+                            if edit.changed() {
+                                self.parse_input();
                             }
-                            self.reset_plot = true;
-                        } else {
-                            self.io_message = "Ошибка: Некорректные координаты!".into();
-                        }
-                    }
-                    if !can_add {
-                        ui.label(
-                            egui::RichText::new(format!("Достигнут лимит ({} точек)", MAX_POINTS))
-                                .color(egui::Color32::KHAKI),
-                        );
-                    }
+                        });
                 });
 
                 ui.add_space(20.0);
@@ -253,19 +233,25 @@ impl eframe::App for Lab4App {
                 ui.heading("Результаты анализа");
                 ui.label(&self.status_msg);
 
-                if let Some(best) = self.best_idx {
-                    let res = &self.results[best];
-                    ui.add_space(10.0);
-                    ui.colored_label(
-                        egui::Color32::YELLOW,
-                        format!("Лучшая модель: {}", res.model_type),
-                    );
-                    ui.label(format!("Формула: {}", res.formula()));
-                    ui.label(format!("RMSD (ε): {:.6}", res.epsilon));
-                    ui.label(format!("R²: {:.6}", res.r_squared));
-                    if let Some(r) = res.r_pearson {
-                        ui.label(format!("r (Pearson): {:.6}", r));
-                    }
+                if !self.results.is_empty() {
+                    egui::ScrollArea::vertical().id_source("results_scroll").show(ui, |ui| {
+                        for (i, res) in self.results.iter().enumerate() {
+                            let is_best = i == 0;
+                            ui.group(|ui| {
+                                if is_best {
+                                    ui.colored_label(egui::Color32::YELLOW, "⭐ НАИЛУЧШАЯ МОДЕЛЬ");
+                                }
+                                ui.label(egui::RichText::new(res.model_type.to_string()).strong());
+                                ui.label(format!("Формула: {}", res.formula()));
+                                ui.label(format!("RMSD (ε): {:.6}", res.epsilon));
+                                ui.label(format!("R²: {:.6}", res.r_squared));
+                                if let Some(r) = res.r_pearson {
+                                    ui.label(format!("r (Pearson): {:.6}", r));
+                                }
+                            });
+                            ui.add_space(5.0);
+                        }
+                    });
                 } else {
                     ui.label(format!(
                         "Добавьте от {} до {} точек для анализа.",
